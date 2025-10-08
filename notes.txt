@@ -1,0 +1,23 @@
+Deux graphes :
+
+premier graphe : (V, E) où V = intersections, adresses et arrêts de métro, E = tronçons de route et rame de métro
+	pb formel : plus court chemin entre chaque adresse (APSP) : https://theory.stanford.edu/~virgi/cs267/papers/dorhalperinzwick.pdf (présent dans le grok log)
+	algos : https://grok.com/share/c2hhcmQtMw%3D%3D_5be74010-54f1-49a6-bb59-9f822fdaedca -> Repeated BFS
+	
+	Pseudocode :
+
+	Initialize a V x V distance matrix with infinity, diagonals 0.
+	For each source node s in graph:
+	    Initialize queue with s (distance 0), visited set.
+	    While queue not empty:
+		Dequeue u.
+		For each neighbor v of u:
+		    If not visited or distance can be updated:
+		        Set dist[s][v] = dist[s][u] + 1
+		        Enqueue v, mark visited.
+
+	(FIFO queue)
+
+deuxieme graphe : (V, E) où V = adresses, E = couples d'adresses valués par shortest path value
+	pb formel : travelling salesman
+	algo : https://grok.com/share/c2hhcmQtMw%3D%3D_1687e3b9-e45b-4568-bb35-1bf129e6e3e6 (probably instantaneous) -> Held Karp
