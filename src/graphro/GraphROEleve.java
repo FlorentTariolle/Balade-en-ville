@@ -16,9 +16,10 @@ public class GraphROEleve {
 
     /**
      * Crée le graphe de la ville avec tous les sommets et arêtes
+     * @param metroActif true si le métro fonctionne, false sinon
      * @return le graphe complet de la ville
      */
-    public static GrapheListe creerGrapheVille() {
+    public static GrapheListe creerGrapheVille(boolean metroActif) {
         // Création du graphe avec 22 sommets
         GrapheListe graphe = new GrapheListe(22);
         
@@ -134,12 +135,23 @@ public class GraphROEleve {
         graphe.ajouterArc(interMarronBleu, depotRueBleu, 1);
         graphe.ajouterArc(depotRueBleu, interMarronBleu, 1);
         
-        graphe.ajouterArc(arretMetroJaune, arretMetroRouge, 1);
-        graphe.ajouterArc(arretMetroRouge, arretMetroJaune, 1);
-        graphe.ajouterArc(arretMetroRouge, arretMetroVert, 1);
-        graphe.ajouterArc(arretMetroVert, arretMetroRouge, 1);
+        // Arêtes du métro : seulement si le métro fonctionne
+        if (metroActif) {
+            graphe.ajouterArc(arretMetroJaune, arretMetroRouge, 1);
+            graphe.ajouterArc(arretMetroRouge, arretMetroJaune, 1);
+            graphe.ajouterArc(arretMetroRouge, arretMetroVert, 1);
+            graphe.ajouterArc(arretMetroVert, arretMetroRouge, 1);
+        }
         
         return graphe;
+    }
+    
+    /**
+     * Crée le graphe de la ville avec le métro fonctionnel (méthode de compatibilité)
+     * @return le graphe complet de la ville
+     */
+    public static GrapheListe creerGrapheVille() {
+        return creerGrapheVille(true);
     }
     
     /**
@@ -397,17 +409,12 @@ public class GraphROEleve {
     }
 
     /**
-     * @param args the command line arguments
+     * Résout le TSP pour un graphe donné et affiche les résultats
      */
-    public static void main(String[] args) {
-        System.out.println("=== Création du graphe de la ville ===");
-        GrapheListe grapheVille = creerGrapheVille();
-        
-        System.out.println("Nombre de sommets : " + grapheVille.taille());
-        System.out.println("\nListe des sommets :");
-        for (Sommet s : grapheVille.sommets()) {
-            System.out.println("  - " + s);
-        }
+    private static void resoudreTSP(GrapheListe grapheVille, String scenario) {
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("SCÉNARIO : " + scenario);
+        System.out.println("=".repeat(60));
         
         System.out.println("\n=== Calcul des distances minimales (BFS répété) ===");
         int[][] distances = calculerDistancesMinimales(grapheVille);
@@ -425,13 +432,6 @@ public class GraphROEleve {
         System.out.println("\n=== Création du graphe complet valué ===");
         GrapheListe grapheComplet = creerGrapheCompletValue(grapheVille, distances, sommetToIndex);
         System.out.println("Graphe complet créé avec " + grapheComplet.taille() + " sommets");
-        
-        // Compter le nombre d'arêtes (je veux vérifier que toutes les arêtes sont bien là)
-        int nbAretes = 0;
-        for (Sommet s : grapheComplet.sommets()) {
-            nbAretes += grapheComplet.voisins(s).size();
-        }
-        System.out.println("Nombre d'arêtes : " + nbAretes);
         
         System.out.println("\n=== Résolution du TSP avec Held-Karp ===");
         // Trouver les sommets à visiter
@@ -458,7 +458,7 @@ public class GraphROEleve {
         }
         
         if (depot != null && adresse8 != null && adresse10 != null && adresse22 != null && adresse3 != null) {
-            villesAVisiter.add(depot); // Le dépôt en premier
+            villesAVisiter.add(depot);
             villesAVisiter.add(adresse8);
             villesAVisiter.add(adresse10);
             villesAVisiter.add(adresse22);
@@ -472,17 +472,46 @@ public class GraphROEleve {
             int[] result = heldKarp(grapheComplet, villesAVisiter, sommetToIndex);
             
             if (result[0] != Integer.MAX_VALUE) {
-                System.out.println("\nCoût minimal : " + result[0]);
+                System.out.println("\n✓ SOLUTION TROUVÉE");
+                System.out.println("Coût minimal : " + result[0]);
                 System.out.println("Chemin optimal :");
                 for (int i = 2; i < result.length; i++) {
                     int villeIdx = result[i];
                     System.out.println("  " + (i - 1) + ". " + villesAVisiter.get(villeIdx));
                 }
             } else {
-                System.out.println("\nAucune solution trouvée (certaines villes ne sont pas accessibles)"); // Si ça arrive j'ai fais n'importe quoi
+                System.out.println("\n✗ Aucune solution trouvée (certaines villes ne sont pas accessibles)");
             }
         } else {
-            System.out.println("Erreur : impossible de trouver toutes les villes à visiter"); // Si ça arrive j'ai fais n'importe quoi aussi
+            System.out.println("Erreur : impossible de trouver toutes les villes à visiter");
         }
+    }
+    
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        System.out.println("=== Création du graphe de la ville ===");
+        GrapheListe grapheVilleAvecMetro = creerGrapheVille(true);
+        
+        System.out.println("Nombre de sommets : " + grapheVilleAvecMetro.taille());
+        System.out.println("\nListe des sommets :");
+        for (Sommet s : grapheVilleAvecMetro.sommets()) {
+            System.out.println("  - " + s);
+        }
+        
+        // Résoudre avec métro
+        resoudreTSP(grapheVilleAvecMetro, "AVEC MÉTRO (fonctionnel)");
+        
+        // Résoudre sans métro
+        System.out.println("\n\n");
+        GrapheListe grapheVilleSansMetro = creerGrapheVille(false);
+        resoudreTSP(grapheVilleSansMetro, "SANS MÉTRO (panne)");
+        
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("COMPARAISON DES RÉSULTATS");
+        System.out.println("=".repeat(60));
+        System.out.println("\nLes résultats montrent l'impact de la panne du métro sur l'itinéraire optimal.");
+        System.out.println("Voir le document PDF pour les détails des modifications apportées au code.");
     }
 }

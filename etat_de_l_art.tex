@@ -46,7 +46,7 @@ Le premier problème formel est le \textbf{All-Pairs Shortest Path (APSP)} : cal
 Plusieurs algorithmes existent pour résoudre le problème APSP :
 \begin{itemize}
     \item \textbf{Algorithme de Floyd-Warshall} : complexité $O(V^3)$, adapté aux graphes denses
-    \item \textbf{Repeated BFS} : complexité $O(V \times (V + E))$ pour les graphes non pondérés, $O(V^2 + VE)$ pour les graphes pondérés
+    \item \textbf{Repeated BFS} : complexité $O(V \times (V + E))$ pour les graphes non pondérés
     \item \textbf{Algorithme de Dijkstra répété} : complexité $O(V \times (E + V \log V))$ pour les graphes pondérés
     \item \textbf{Algorithmes avancés} : Seidel \cite{dorhalperinzwick}, techniques de multiplication de matrices rapides
 \end{itemize}
@@ -178,6 +178,83 @@ La complexité est $O(2^n \times n^2)$ où $n$ est le nombre de villes à visite
 
 Pour notre instance avec 22 sommets et environ 29 arêtes (non orientées), la complexité est très raisonnable et le calcul est instantané.
 
+\section{Adaptation : Gestion de la panne du métro}
+
+\subsection{Question théorique : Détection de l'utilisation du métro}
+
+Pour savoir si le trajet généré emprunte le métro ou non, il faut adapter la modélisation de la manière suivante :
+
+\begin{enumerate}
+    \item \textbf{Marquer les arêtes du métro} : Attribuer un attribut ou un type différent aux arêtes correspondant aux connexions du métro (par exemple, ajouter un champ \texttt{type} aux arêtes : \texttt{ROUTE} ou \texttt{METRO}).
+    
+    \item \textbf{Tracer le chemin dans le graphe original} : Après avoir résolu le TSP sur le graphe complet valué, reconstruire le chemin réel dans le graphe original $G_1$. Pour chaque paire de villes consécutives dans la solution du TSP, trouver le plus court chemin dans $G_1$ qui les relie (utiliser un algorithme de reconstruction de chemin ou re-BFS).
+    
+    \item \textbf{Vérifier si le chemin passe par des arrêts de métro} : Pour chaque segment du chemin reconstruit, vérifier s'il contient des arrêts de métro. Si le chemin entre deux adresses passe par \texttt{arret\_metro\_rouge}, \texttt{arret\_metro\_jaune} ou \texttt{arret\_metro\_vert}, alors le métro est utilisé.
+    
+    \item \textbf{Afficher l'information} : Pour chaque étape du trajet, indiquer "Aller de X à Y via [MÉTRO / ROUTE]" et calculer le pourcentage du trajet effectué en métro.
+\end{enumerate}
+
+\textbf{En résumé} : Il faut enrichir la modélisation pour distinguer les arêtes de métro, puis reconstruire le chemin dans le graphe original pour détecter quels segments utilisent effectivement le métro.
+
+\subsection{Impact de la panne du métro sur l'algorithme}
+
+\subsubsection{Implications}
+
+La panne du métro implique les modifications suivantes :
+
+\begin{itemize}
+    \item \textbf{Modification du graphe} : Supprimer les arêtes reliant les arrêts de métro entre eux (ligne de métro). Les arrêts de métro restent dans le graphe (accessibles par la route), mais ne sont plus reliés directement entre eux.
+    
+    \item \textbf{Impact sur le calcul des distances} : Le BFS répété recalcule automatiquement les distances sans les connexions du métro. Certaines distances entre arrêts de métro augmentent (passent de 1 à plusieurs tronçons). La matrice APSP change, notamment pour les paires impliquant des arrêts de métro.
+    
+    \item \textbf{Impact sur le graphe complet valué} : Les nouvelles distances sont reflétées dans le graphe complet. Le coût du trajet optimal peut augmenter et l'ordre des visites peut changer.
+    
+    \item \textbf{Impact sur Held-Karp} : L'algorithme Held-Karp fonctionne de la même manière, mais avec des distances différentes. La solution optimale peut changer en termes de coût et d'ordre des visites, mais reste exacte.
+\end{itemize}
+
+\subsubsection{Modifications apportées au code}
+
+Pour gérer la panne du métro, nous avons modifié le code de la manière suivante :
+
+\begin{enumerate}
+    \item \textbf{Ajout d'un paramètre à \texttt{creerGrapheVille}} : 
+    \begin{itemize}
+        \item Ajout d'un paramètre \texttt{boolean metroActif} pour contrôler si le métro est fonctionnel
+        \item Les arêtes du métro ne sont ajoutées que si \texttt{metroActif = true}
+        \item Les arrêts de métro restent accessibles uniquement par la route si le métro est en panne
+    \end{itemize}
+    
+    \item \textbf{Création d'une méthode \texttt{resoudreTSP}} : Extraction de la logique de résolution du TSP dans une méthode réutilisable pour éviter la duplication de code.
+    
+    \item \textbf{Modification du \texttt{main}} : Le programme résout maintenant le problème deux fois : une fois avec le métro fonctionnel et une fois sans le métro, permettant la comparaison des résultats.
+\end{enumerate}
+
+\subsection{Résultats comparatifs}
+
+\subsubsection{Avec métro fonctionnel}
+
+\begin{itemize}
+    \item \textbf{Coût minimal} : 18
+    \item \textbf{Chemin optimal} : depot\_rue\_bleu → 3\_rue\_marron → 22\_rue\_vert → 8\_rue\_mauve → 10\_rue\_rouge → depot\_rue\_bleu
+\end{itemize}
+
+\subsubsection{Sans métro (panne)}
+
+\begin{itemize}
+    \item \textbf{Coût minimal} : 22
+    \item \textbf{Chemin optimal} : depot\_rue\_bleu → 3\_rue\_marron → 22\_rue\_vert → 10\_rue\_rouge → 8\_rue\_mauve → depot\_rue\_bleu
+\end{itemize}
+
+\subsubsection{Analyse}
+
+\begin{itemize}
+    \item \textbf{Impact sur le coût} : Le coût augmente de 18 à 22 (+22\%), car sans le métro, certaines connexions directes entre arrêts de métro ne sont plus disponibles.
+    
+    \item \textbf{Impact sur l'ordre} : L'ordre des visites change : avec le métro, on visite 8\_rue\_mauve avant 10\_rue\_rouge, mais sans métro, l'ordre inverse devient optimal.
+    
+    \item \textbf{Robustesse} : Le graphe reste connexe car tous les arrêts de métro restent accessibles par la route, mais les distances augmentent.
+\end{itemize}
+
 \section{Conclusion}
 
 L'approche en deux graphes avec Repeated BFS et Held-Karp est adaptée à notre problème car :
@@ -186,6 +263,7 @@ L'approche en deux graphes avec Repeated BFS et Held-Karp est adaptée à notre 
     \item Elle garantit la solution optimale du TSP grâce à Held-Karp
     \item Elle reste efficace pour la taille de notre instance (22 sommets, 5 villes à visiter)
     \item Elle est simple à implémenter et à maintenir
+    \item Elle s'adapte facilement aux changements de contraintes (comme la panne du métro)
 \end{enumerate}
 
 Cette combinaison d'algorithmes classiques et éprouvés constitue une solution robuste et exacte pour le problème d'optimisation de livraison.

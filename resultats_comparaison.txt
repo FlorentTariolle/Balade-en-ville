@@ -1,0 +1,90 @@
+﻿=== CrÚation du graphe de la ville ===
+Nombre de sommets : 22
+
+Liste des sommets :
+  - arret_metro_rue_jaune
+  - intersection_jaune_mauve
+  - 8_rue_mauve
+  - intersection_mauve_vert
+  - intersection_mauve_noir
+  - intersection_noir_cyan
+  - intersection_cyan_rouge
+  - intersection_rouge_vert
+  - 10_rue_rouge
+  - intersection_rouge_orange
+  - intersection_orange_noir
+  - intersection_noir_rose
+  - intersection_rose_gris
+  - intersection_gris_vert
+  - intersection_noir_vert
+  - arret_metro_rouge
+  - arret_metro_vert
+  - 22_rue_vert
+  - intersection_vert_marron
+  - intersection_marron_bleu
+  - depot_rue_bleu
+  - 3_rue_marron
+
+============================================================
+SC╔NARIO : AVEC M╔TRO (fonctionnel)
+============================================================
+
+=== Calcul des distances minimales (BFS rÚpÚtÚ) ===
+
+=== CrÚation du graphe complet valuÚ ===
+Graphe complet crÚÚ avec 22 sommets
+
+=== RÚsolution du TSP avec Held-Karp ===
+Villes Ó visiter :
+  - depot_rue_bleu
+  - 8_rue_mauve
+  - 10_rue_rouge
+  - 22_rue_vert
+  - 3_rue_marron
+
+? SOLUTION TROUV╔E
+Co¹t minimal : 18
+Chemin optimal :
+  1. depot_rue_bleu
+  2. 3_rue_marron
+  3. 22_rue_vert
+  4. 8_rue_mauve
+  5. 10_rue_rouge
+  6. depot_rue_bleu
+
+
+
+
+============================================================
+SC╔NARIO : SANS M╔TRO (panne)
+============================================================
+
+=== Calcul des distances minimales (BFS rÚpÚtÚ) ===
+
+=== CrÚation du graphe complet valuÚ ===
+Graphe complet crÚÚ avec 22 sommets
+
+=== RÚsolution du TSP avec Held-Karp ===
+Villes Ó visiter :
+  - depot_rue_bleu
+  - 8_rue_mauve
+  - 10_rue_rouge
+  - 22_rue_vert
+  - 3_rue_marron
+
+? SOLUTION TROUV╔E
+Co¹t minimal : 22
+Chemin optimal :
+  1. depot_rue_bleu
+  2. 3_rue_marron
+  3. 22_rue_vert
+  4. 10_rue_rouge
+  5. 8_rue_mauve
+  6. depot_rue_bleu
+
+============================================================
+COMPARAISON DES R╔SULTATS
+============================================================
+
+Les rÚsultats montrent l'impact de la panne du mÚtro sur l'itinÚraire optimal.
+Voir le document PDF pour les dÚtails des modifications apportÚes au code.
