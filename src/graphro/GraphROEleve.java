@@ -261,19 +261,17 @@ public class GraphROEleve {
             grapheComplet.ajouterSommet(s);
         }
         
-        // Ajouter toutes les arêtes entre toutes les paires de sommets
-        // Chaque arête est valuée par la distance minimale entre les deux sommets
         for (Sommet u : sommets) {
             Integer indexU = sommetToIndex.get(u);
             if (indexU == null) continue;
             
             for (Sommet v : sommets) {
-                if (u != v) { // Pas de boucle
+                if (u != v) {
                     Integer indexV = sommetToIndex.get(v);
                     if (indexV == null) continue;
                     
                     int distance = distances[indexU][indexV];
-                    // Ne pas ajouter d'arête si la distance est infinie
+                    
                     if (distance != Integer.MAX_VALUE) {
                         grapheComplet.ajouterArc(u, v, distance);
                     }
@@ -282,6 +280,120 @@ public class GraphROEleve {
         }
         
         return grapheComplet;
+    }
+    
+    /**
+     * Résout le problème du voyageur de commerce (TSP) avec l'algorithme de Held-Karp
+     * Visite toutes les "villes" spécifiées en partant et revenant au dépôt
+     * 
+     * @param grapheComplet le graphe complet valué
+     * @param villesAVisiter liste des "villes" à visiter (incluant le dépôt au début et à la fin)
+     * @param sommetToIndex map des sommets vers leurs indices
+     * @return le coût minimal et le chemin optimal
+     */
+    public static int[] heldKarp(GrapheListe grapheComplet, List<Sommet> villesAVisiter, Map<Sommet, Integer> sommetToIndex) {
+        int n = villesAVisiter.size();
+        
+        // Créer une matrice de distances entre les "villes" à visiter
+        int[][] dist = new int[n][n];
+        for (int i = 0; i < n; i++) {
+            Sommet u = villesAVisiter.get(i);
+            LinkedList<Arc> voisins = grapheComplet.voisins(u);
+            Map<Sommet, Integer> distances = new HashMap<>();
+            for (Arc arc : voisins) {
+                distances.put(arc.destination(), arc.valeur());
+            }
+            
+            for (int j = 0; j < n; j++) {
+                Sommet v = villesAVisiter.get(j);
+                if (i == j) {
+                    dist[i][j] = 0;
+                } else {
+                    Integer d = distances.get(v);
+                    dist[i][j] = (d != null) ? d : Integer.MAX_VALUE;
+                }
+            }
+        }
+        
+        // dp[mask][j] = coût minimal pour visiter toutes les "villes" dans mask et finir à j
+        int totalSubsets = 1 << n;
+        int[][] dp = new int[totalSubsets][n];
+        int[][] parent = new int[totalSubsets][n];
+        
+        // Initialiser avec des valeurs infinies
+        for (int i = 0; i < totalSubsets; i++) {
+            Arrays.fill(dp[i], Integer.MAX_VALUE);
+            Arrays.fill(parent[i], -1);
+        }
+        
+        // Base : partir du dépôt
+        dp[1 << 0][0] = 0;
+        
+        // Remplir la table DP
+        for (int mask = 1; mask < totalSubsets; mask++) {
+            for (int j = 0; j < n; j++) {
+                if ((mask & (1 << j)) == 0) continue; // j n'est pas dans mask
+                if (dp[mask][j] == Integer.MAX_VALUE) continue;
+                
+                // Essayer d'ajouter chaque "ville" non visitée
+                for (int k = 0; k < n; k++) {
+                    if ((mask & (1 << k)) != 0) continue; // k déjà dans mask
+                    if (dist[j][k] == Integer.MAX_VALUE) continue;
+                    
+                    int newMask = mask | (1 << k);
+                    int newCost = dp[mask][j] + dist[j][k];
+                    
+                    if (newCost < dp[newMask][k]) {
+                        dp[newMask][k] = newCost;
+                        parent[newMask][k] = j;
+                    }
+                }
+            }
+        }
+        
+        // Trouver le meilleur coût en revenant au dépôt
+        int fullMask = (1 << n) - 1;
+        int minCost = Integer.MAX_VALUE;
+        int lastCity = -1;
+        
+        for (int j = 0; j < n; j++) {
+            if (dp[fullMask][j] == Integer.MAX_VALUE) continue;
+            int cost = dp[fullMask][j] + dist[j][0]; // Revenir au dépôt
+            if (cost < minCost && dist[j][0] != Integer.MAX_VALUE) {
+                minCost = cost;
+                lastCity = j;
+            }
+        }
+        
+        // Reconstruire le chemin
+        List<Integer> cheminIndices = new ArrayList<>();
+        int currentMask = fullMask;
+        int currentCity = lastCity;
+        
+        // Ajouter la dernière ville
+        cheminIndices.add(0, currentCity);
+        
+        // Remonter jusqu'au départ
+        while (currentMask != (1 << 0)) {
+            int prevCity = parent[currentMask][currentCity];
+            if (prevCity == -1) break;
+            cheminIndices.add(0, prevCity);
+            currentMask = currentMask ^ (1 << currentCity);
+            currentCity = prevCity;
+        }
+        
+        // Ajouter le retour au dépôt à la fin
+        cheminIndices.add(0);
+        
+        // Créer le résultat
+        int[] result = new int[cheminIndices.size() + 2];
+        result[0] = minCost;
+        result[1] = cheminIndices.size();
+        for (int i = 0; i < cheminIndices.size(); i++) {
+            result[i + 2] = cheminIndices.get(i);
+        }
+        
+        return result;
     }
 
     /**
@@ -300,10 +412,9 @@ public class GraphROEleve {
         System.out.println("\n=== Calcul des distances minimales (BFS répété) ===");
         int[][] distances = calculerDistancesMinimales(grapheVille);
         
-        System.out.println("\nMatrice des distances minimales :");
         Collection<Sommet> sommets = grapheVille.sommets();
         
-        // Créer une map des sommets vers leurs indices pour l'affichage
+        // Créer une map des sommets vers leurs indices
         Map<Sommet, Integer> sommetToIndex = new HashMap<>();
         int idx = 0;
         for (Sommet s : sommets) {
@@ -315,33 +426,63 @@ public class GraphROEleve {
         GrapheListe grapheComplet = creerGrapheCompletValue(grapheVille, distances, sommetToIndex);
         System.out.println("Graphe complet créé avec " + grapheComplet.taille() + " sommets");
         
-        // Compter le nombre d'arêtes
+        // Compter le nombre d'arêtes (je veux vérifier que toutes les arêtes sont bien là)
         int nbAretes = 0;
         for (Sommet s : grapheComplet.sommets()) {
             nbAretes += grapheComplet.voisins(s).size();
         }
         System.out.println("Nombre d'arêtes : " + nbAretes);
         
-        // Afficher l'en-tête
-        System.out.print("        ");
-        for (Sommet s : sommets) {
-            System.out.printf("%8s", s.toString().substring(0, Math.min(8, s.toString().length())));
-        }
-        System.out.println();
+        System.out.println("\n=== Résolution du TSP avec Held-Karp ===");
+        // Trouver les sommets à visiter
+        List<Sommet> villesAVisiter = new ArrayList<>();
+        Sommet depot = null;
+        Sommet adresse8 = null;
+        Sommet adresse10 = null;
+        Sommet adresse22 = null;
+        Sommet adresse3 = null;
         
-        // Afficher la matrice
-        for (Sommet s1 : sommets) {
-            int i = sommetToIndex.get(s1);
-            System.out.printf("%8s", s1.toString().substring(0, Math.min(8, s1.toString().length())));
-            for (Sommet s2 : sommets) {
-                int j = sommetToIndex.get(s2);
-                if (distances[i][j] == Integer.MAX_VALUE) {
-                    System.out.printf("%8s", "INF");
-                } else {
-                    System.out.printf("%8d", distances[i][j]);
-                }
+        for (Sommet s : grapheComplet.sommets()) {
+            String nom = s.toString();
+            if (nom.equals("depot_rue_bleu")) {
+                depot = s;
+            } else if (nom.equals("8_rue_mauve")) {
+                adresse8 = s;
+            } else if (nom.equals("10_rue_rouge")) {
+                adresse10 = s;
+            } else if (nom.equals("22_rue_vert")) {
+                adresse22 = s;
+            } else if (nom.equals("3_rue_marron")) {
+                adresse3 = s;
             }
-            System.out.println();
+        }
+        
+        if (depot != null && adresse8 != null && adresse10 != null && adresse22 != null && adresse3 != null) {
+            villesAVisiter.add(depot); // Le dépôt en premier
+            villesAVisiter.add(adresse8);
+            villesAVisiter.add(adresse10);
+            villesAVisiter.add(adresse22);
+            villesAVisiter.add(adresse3);
+            
+            System.out.println("Villes à visiter :");
+            for (Sommet v : villesAVisiter) {
+                System.out.println("  - " + v);
+            }
+            
+            int[] result = heldKarp(grapheComplet, villesAVisiter, sommetToIndex);
+            
+            if (result[0] != Integer.MAX_VALUE) {
+                System.out.println("\nCoût minimal : " + result[0]);
+                System.out.println("Chemin optimal :");
+                for (int i = 2; i < result.length; i++) {
+                    int villeIdx = result[i];
+                    System.out.println("  " + (i - 1) + ". " + villesAVisiter.get(villeIdx));
+                }
+            } else {
+                System.out.println("\nAucune solution trouvée (certaines villes ne sont pas accessibles)"); // Si ça arrive j'ai fais n'importe quoi
+            }
+        } else {
+            System.out.println("Erreur : impossible de trouver toutes les villes à visiter"); // Si ça arrive j'ai fais n'importe quoi aussi
         }
     }
 }
