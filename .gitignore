@@ -1,0 +1,27 @@
+# Fichiers compilés Java
+classes/
+*.class
+
+# Fichiers IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de build
+build/
+target/
+bin/
+out/
+
+# Fichiers temporaires
+*.tmp
+*.log
+*.swp
+*~
+
