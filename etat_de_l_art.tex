@@ -1,0 +1,208 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\title{État de l'art : Optimisation de livraison dans un réseau urbain}
+\author{Florent Tariolle et Amine Tauil}
+\date{22 octobre 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+Ce document présente l'état de l'art concernant le problème d'optimisation de livraison dans un réseau urbain modélisé par un graphe. Le problème se décompose en deux étapes principales : le calcul des plus courts chemins entre tous les points d'intérêt, puis la résolution du problème du voyageur de commerce (TSP) pour déterminer l'itinéraire optimal de livraison.
+
+\section{Problématique}
+
+Le problème consiste à optimiser les livraisons depuis un dépôt vers plusieurs adresses dans une ville. La ville est modélisée par un graphe non orienté $G_1 = (V_1, E_1)$ où :
+\begin{itemize}
+    \item $V_1$ représente les intersections, adresses de livraison et arrêts de métro
+    \item $E_1$ représente les tronçons de route et les connexions du métro
+\end{itemize}
+
+L'objectif est de trouver un chemin optimal qui part du dépôt, visite toutes les adresses de livraison, et retourne au dépôt.
+
+\section{Approche en deux graphes}
+
+\subsection{Premier graphe : Calcul des distances minimales}
+
+Le premier problème formel est le \textbf{All-Pairs Shortest Path (APSP)} : calculer la distance minimale entre chaque paire de sommets dans le graphe $G_1$.
+
+\subsubsection{État de l'art pour APSP}
+
+Plusieurs algorithmes existent pour résoudre le problème APSP :
+\begin{itemize}
+    \item \textbf{Algorithme de Floyd-Warshall} : complexité $O(V^3)$, adapté aux graphes denses
+    \item \textbf{Repeated BFS} : complexité $O(V \times (V + E))$ pour les graphes non pondérés, $O(V^2 + VE)$ pour les graphes pondérés
+    \item \textbf{Algorithme de Dijkstra répété} : complexité $O(V \times (E + V \log V))$ pour les graphes pondérés
+    \item \textbf{Algorithmes avancés} : Seidel \cite{dorhalperinzwick}, techniques de multiplication de matrices rapides
+\end{itemize}
+
+\subsubsection{Choix de l'algorithme : Repeated BFS}
+
+Nous avons choisi l'algorithme \textbf{Repeated BFS} (Breadth-First Search répété) pour les raisons suivantes :
+
+\begin{enumerate}
+    \item \textbf{Simplicité d'implémentation} : Le BFS est un algorithme fondamental et facile à comprendre
+    \item \textbf{Efficacité pour graphes non pondérés} : Dans notre cas, chaque tronçon de route a une distance unitaire (1), ce qui rend le BFS optimal
+    \item \textbf{Complexité adaptée} : Pour un graphe avec $V$ sommets et $E$ arêtes, la complexité est $O(V \times (V + E))$, ce qui est efficace pour notre taille de graphe (22 sommets)
+    \item \textbf{Exactitude garantie} : Le BFS garantit de trouver le plus court chemin dans un graphe non pondéré
+\end{enumerate}
+
+\subsubsection{Pseudocode de Repeated BFS}
+
+\begin{algorithm}[H]
+\caption{Repeated BFS pour APSP}
+\begin{algorithmic}[1]
+\STATE Initialiser une matrice $V \times V$ de distances avec $\infty$, diagonale à $0$
+\FOR{chaque sommet source $s$ dans le graphe}
+    \STATE Initialiser une file avec $s$ (distance $0$), ensemble visité
+    \WHILE{file non vide}
+        \STATE Défiler $u$
+        \FOR{chaque voisin $v$ de $u$}
+            \IF{$v$ non visité OU distance peut être mise à jour}
+                \STATE $dist[s][v] = dist[s][u] + 1$
+                \STATE Enfiler $v$, marquer comme visité
+            \ENDIF
+        \ENDFOR
+    \ENDWHILE
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Deuxième graphe : Graphe complet valué}
+
+À partir de la matrice des distances minimales, nous construisons un deuxième graphe $G_2 = (V_2, E_2)$ où :
+\begin{itemize}
+    \item $V_2 = V_1$ (mêmes sommets que le graphe original)
+    \item $E_2$ contient toutes les paires de sommets, chaque arête $(u,v)$ étant valuée par la distance minimale entre $u$ et $v$ dans $G_1$
+\end{itemize}
+
+Ce graphe complet valué représente les distances optimales entre tous les points d'intérêt.
+
+\subsection{Problème du voyageur de commerce (TSP)}
+
+Sur le graphe complet $G_2$, nous devons résoudre le TSP : trouver un cycle hamiltonien de coût minimal qui visite toutes les adresses de livraison en partant et revenant au dépôt.
+
+\subsubsection{État de l'art pour TSP}
+
+Le TSP est un problème NP-complet. Plusieurs approches existent :
+
+\begin{itemize}
+    \item \textbf{Algorithmes exacts} :
+    \begin{itemize}
+        \item \textbf{Held-Karp (programmation dynamique)} : complexité $O(2^n \times n^2)$ en temps, $O(2^n \times n)$ en espace
+        \item \textbf{Branch and Bound} : complexité exponentielle dans le pire cas
+        \item \textbf{Algorithmes de concorde} : optimisés pour des instances spécifiques
+    \end{itemize}
+    \item \textbf{Algorithmes approchés} :
+    \begin{itemize}
+        \item \textbf{Heuristiques constructives} : Nearest Neighbor, Insertion, etc.
+        \item \textbf{Amélioration locale} : 2-opt, 3-opt, Lin-Kernighan
+        \item \textbf{Métaheuristiques} : Recuit simulé, Algorithmes génétiques, Colonies de fourmis
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Choix de l'algorithme : Held-Karp}
+
+Nous avons choisi l'algorithme de \textbf{Held-Karp} (aussi appelé algorithme de Bellman-Held-Karp) pour les raisons suivantes :
+
+\begin{enumerate}
+    \item \textbf{Solution exacte} : Contrairement aux heuristiques, Held-Karp garantit la solution optimale
+    \item \textbf{Taille du problème gérable} : Avec 5 villes à visiter (dépôt + 4 adresses), la complexité $O(2^5 \times 5^2) = O(800)$ est instantanée
+    \item \textbf{Fiabilité} : Pas de dépendance aux heuristiques qui peuvent donner des résultats sous-optimaux
+    \item \textbf{Standard de l'industrie} : Held-Karp est l'algorithme standard pour les petites instances de TSP
+\end{enumerate}
+
+\subsubsection{Principe de Held-Karp}
+
+Held-Karp utilise la programmation dynamique avec des masques binaires :
+\begin{itemize}
+    \item $dp[mask][j]$ = coût minimal pour visiter toutes les villes dans $mask$ et finir à la ville $j$
+    \item Récurrence : $dp[mask][j] = \min_{k \in mask \setminus \{j\}} (dp[mask \setminus \{j\}][k] + dist(k,j))$
+    \item Cas de base : $dp[\{s\}][s] = 0$ où $s$ est le dépôt
+\end{itemize}
+
+La complexité est $O(2^n \times n^2)$ où $n$ est le nombre de villes à visiter.
+
+\section{Justification des choix algorithmiques}
+
+\subsection{Pourquoi Repeated BFS plutôt que Floyd-Warshall ?}
+
+\begin{itemize}
+    \item Notre graphe est \textbf{non pondéré} : toutes les arêtes ont un poids de 1
+    \item Floyd-Warshall est conçu pour les graphes pondérés et nécessite $O(V^3)$ opérations
+    \item BFS est spécialement optimisé pour les graphes non pondérés avec complexité $O(V + E)$ par source
+    \item Pour notre graphe de 22 sommets, Repeated BFS est plus efficace et plus simple à implémenter
+\end{itemize}
+
+\subsection{Pourquoi Held-Karp plutôt qu'une heuristique ?}
+
+\begin{itemize}
+    \item Le nombre de villes à visiter est \textbf{petit} (5 villes) : la complexité exponentielle est gérable
+    \item Nous voulons la \textbf{solution optimale}, pas une approximation
+    \item Les heuristiques peuvent donner des solutions jusqu'à 25\% plus longues que l'optimum
+    \item Held-Karp garantit la solution exacte avec un temps de calcul négligeable pour 5 villes
+\end{itemize}
+
+\subsection{Pourquoi créer un graphe complet intermédiaire ?}
+
+\begin{itemize}
+    \item Le TSP nécessite les distances entre \textbf{toutes} les paires de villes
+    \item Le graphe original contient des chemins indirects : créer le graphe complet pré-calcule tous les plus courts chemins
+    \item Cela permet de résoudre le TSP sur un graphe complet, ce qui est l'hypothèse standard de Held-Karp
+    \item La transformation est en $O(V^2)$ une fois que la matrice APSP est calculée
+\end{itemize}
+
+\section{Complexité globale}
+
+\begin{itemize}
+    \item \textbf{Étape 1 - APSP} : $O(V \times (V + E)) = O(22 \times (22 + E))$ où $E$ est le nombre d'arêtes
+    \item \textbf{Étape 2 - Création du graphe complet} : $O(V^2)$
+    \item \textbf{Étape 3 - TSP avec Held-Karp} : $O(2^n \times n^2)$ où $n$ est le nombre de villes à visiter (5)
+    \item \textbf{Complexité totale} : Dominée par l'APSP, donc $O(V \times (V + E))$
+\end{itemize}
+
+Pour notre instance avec 22 sommets et environ 29 arêtes (non orientées), la complexité est très raisonnable et le calcul est instantané.
+
+\section{Conclusion}
+
+L'approche en deux graphes avec Repeated BFS et Held-Karp est adaptée à notre problème car :
+\begin{enumerate}
+    \item Elle exploite la structure du graphe (non pondéré) pour utiliser BFS de manière optimale
+    \item Elle garantit la solution optimale du TSP grâce à Held-Karp
+    \item Elle reste efficace pour la taille de notre instance (22 sommets, 5 villes à visiter)
+    \item Elle est simple à implémenter et à maintenir
+\end{enumerate}
+
+Cette combinaison d'algorithmes classiques et éprouvés constitue une solution robuste et exacte pour le problème d'optimisation de livraison.
+
+\begin{thebibliography}{9}
+\bibitem{dorhalperinzwick}
+Seidel, R. (1992). On the all-pairs-shortest-path problem. \textit{Proceedings of the 24th Annual ACM Symposium on Theory of Computing}, pp. 745-749.
+
+\bibitem{heldkarp}
+Held, M., \& Karp, R. M. (1962). A dynamic programming approach to sequencing problems. \textit{Journal of the Society for Industrial and Applied Mathematics}, 10(1), 196-210.
+
+\bibitem{bfs}
+Cormen, T. H., Leiserson, C. E., Rivest, R. L., \& Stein, C. (2009). \textit{Introduction to Algorithms} (3rd ed.). MIT Press. Chapter 22: Elementary Graph Algorithms.
+
+\bibitem{tsp}
+Applegate, D. L., Bixby, R. E., Chvátal, V., \& Cook, W. J. (2007). \textit{The Traveling Salesman Problem: A Computational Study}. Princeton University Press.
+\end{thebibliography}
+
+\end{document}
+
